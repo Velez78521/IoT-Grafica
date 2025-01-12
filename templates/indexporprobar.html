@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensor Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-evenly;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            width: 100%;
+            height: 45%;
+        }
+        h1 {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Datos en Tiempo Real</h1>
+    <canvas id="temperatureChart"></canvas>
+    <canvas id="humidityChart"></canvas>
+
+    <script>
+        const temperatureCtx = document.getElementById('temperatureChart').getContext('2d');
+        const humidityCtx = document.getElementById('humidityChart').getContext('2d');
+
+        // Almacén de colores según EMCUTE_ID
+        const colors = {
+            "default": { temperature: 'red', humidity: 'blue' }
+        };
+
+        // Función para obtener un color único para un EMCUTE_ID
+        function getColorForId(id) {
+            if (!colors[id]) {
+                // Generar colores aleatorios para cada EMCUTE_ID
+                colors[id] = {
+                    temperature: `hsl(${Math.random() * 360}, 70%, 50%)`,
+                    humidity: `hsl(${Math.random() * 360}, 70%, 50%)`
+                };
+            }
+            return colors[id];
+        }
+
+        // Crear gráficos
+        const temperatureChart = new Chart(temperatureCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temperatura (°C)',
+                    data: [],
+                    borderColor: colors["default"].temperature,
+                    borderWidth: 2,
+                    fill: false
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Tiempo' } },
+                    y: { title: { display: true, text: 'Temperatura (°C)' } }
+                }
+            }
+        });
+
+        const humidityChart = new Chart(humidityCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Humedad (%)',
+                    data: [],
+                    borderColor: colors["default"].humidity,
+                    borderWidth: 2,
+                    fill: false
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: 'Tiempo' } },
+                    y: { title: { display: true, text: 'Humedad (%)' } }
+                }
+            }
+        });
+
+        // Función para actualizar gráficos
+        async function updateCharts() {
+            const response = await fetch('/api/data');
+            const data = await response.json();
+
+            if (data.length === 0) return;
+
+            const lastEntry = data[data.length - 1];
+            const times = data.map(d => d.time);
+            const temperatures = data.map(d => d.temperature);
+            const humidities = data.map(d => d.humidity);
+
+            // Obtener colores según EMCUTE_ID
+            const colorsForId = getColorForId(lastEntry.EMCUTE_ID);
+
+            // Actualizar datos del gráfico de temperatura
+            temperatureChart.data.labels = times;
+            temperatureChart.data.datasets[0].data = temperatures;
+            temperatureChart.data.datasets[0].borderColor = colorsForId.temperature;
+            temperatureChart.update();
+
+            // Actualizar datos del gráfico de humedad
+            humidityChart.data.labels = times;
+            humidityChart.data.datasets[0].data = humidities;
+            humidityChart.data.datasets[0].borderColor = colorsForId.humidity;
+            humidityChart.update();
+        }
+
+        // Actualizar cada 2 segundos
+        setInterval(updateCharts, 2000);
+    </script>
+</body>
+</html>
+
